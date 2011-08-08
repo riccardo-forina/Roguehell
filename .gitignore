@@ -1,0 +1,3 @@
+*.pyc
+virtualenv_*
+.DS_Store
