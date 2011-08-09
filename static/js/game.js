@@ -9,14 +9,14 @@ var TILE_SIZE = 10,
 	levels,
 	tileTypes = Object();
 
-tileTypes.stairUp = 'stairUp',
-tileTypes.stairDown = 'stairDown',
-tileTypes.treasure = 'treasure',
-tileTypes.trap = 'trap',
-tileTypes.monster = 'monster',
-tileTypes.wall = 'wall',
-tileTypes.walkable = 'walkable',
-tileTypes.door = 'door';
+tileTypes.stairUp = 'StairUp',
+tileTypes.stairDown = 'StairDown',
+tileTypes.treasure = 'Treasure',
+tileTypes.trap = 'Trap',
+tileTypes.monster = 'Monster',
+tileTypes.wall = 'Wall',
+tileTypes.walkable = 'Walkable',
+tileTypes.door = 'Door';
 
 
 
@@ -76,31 +76,40 @@ function drawLevel (level) {
 	var ctx = canvas.context;
 	for (var x = 0; x < canvas.width; x += TILE_SIZE) {
 		for (var y = 0; y < canvas.height; y += TILE_SIZE) {
-			switch(level[x / TILE_SIZE][y / TILE_SIZE]) {
-				case tileTypes.walkable:
-					ctx.fillStyle = 'rgb(100,100,100)'; 
-					break;
-				case tileTypes.wall:
-					ctx.fillStyle = 'rgb(150,50,55)'; 
-					break;
-				case tileTypes.treasure:
-					ctx.fillStyle = 'rgb(255,255,0)'; 
-					break;
-				case tileTypes.stairUp:
-					ctx.fillStyle = 'rgb(0,30,255)'; 
-					break;
-				case tileTypes.stairDown:
-					ctx.fillStyle = 'rgb(0,255,0)'; 
-					break;
-				case tileTypes.monster:
-					ctx.fillStyle = 'rgb(255,0,0)'; 
-					break;
-				default:
-					ctx.fillStyle = 'rgb(0,0,0)'; 
-					break;
+			var tiles = level[x / TILE_SIZE][y / TILE_SIZE];
+			/*
+			if (tiles.length > 1)
+				console.log(tiles);
+			*/
+			for (var i = 0; i < tiles.length; i++){
+				var tile = tiles[i];
 
+				switch(tile) {
+					case tileTypes.walkable:
+						ctx.fillStyle = 'rgb(100,100,100)'; 
+						break;
+					case tileTypes.wall:
+						ctx.fillStyle = 'rgb(150,50,55)'; 
+						break;
+					case tileTypes.treasure:
+						ctx.fillStyle = 'rgb(255,255,0)'; 
+						break;
+					case tileTypes.stairUp:
+						ctx.fillStyle = 'rgb(0,30,255)'; 
+						break;
+					case tileTypes.stairDown:
+						ctx.fillStyle = 'rgb(0,255,0)'; 
+						break;
+					case tileTypes.monster:
+						ctx.fillStyle = 'rgb(255,0,0)'; 
+						break;
+					default:
+						ctx.fillStyle = 'rgb(0,0,0)'; 
+						break;
+
+				}
+				ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
 			}
-			ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
 
 			// ctx.fillStyle = 'rgb(0,0,0)';
 			// var text = level[x / TILE_SIZE][y / TILE_SIZE];

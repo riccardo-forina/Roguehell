@@ -54,8 +54,9 @@ def play():
     def handle_game(q):
         while True:
             #rpc = 'drawLevel(%s);' % (game.levels[0])
-            game.new_round()
-            rpc = "<script type='text/javascript'>parent.drawLevel(%s);</script>" % json.dumps(game.levels[0])
+            level = game.new_round()
+            #print level
+            rpc = "<script type='text/javascript'>parent.drawLevel(%s);</script>" % json.dumps(level)
             q.put(rpc)
             sleep(3)
 
