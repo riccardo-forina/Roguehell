@@ -10,6 +10,7 @@ class TileTypes(object):
     wall = 'Wall'
     walkable = 'Walkable'
     door = 'Door'
+    player = 'Player'
 
     @classmethod
     def get_tile_class(cls, type):
@@ -24,8 +25,8 @@ class Level(object):
     def __init__(self, story, max_story, width=60, height=60):
 
         self.story = story
-        self.MIN_ROOM_SIZE = 2 + 5
-        self.MAX_ROOM_SIZE = 2 + 20
+        self.MIN_ROOM_SIZE = 2 + 3
+        self.MAX_ROOM_SIZE = 2 + 10
         self.MAX_LEVEL_TILES_X = int(width)
         self.MAX_LEVEL_TILES_Y = int(height)
 
@@ -42,12 +43,58 @@ class Level(object):
         self.stairs_up = self._put_tile(TileTypes.stair_up, max_stairs_up)
         self.stairs_down = self._put_tile(TileTypes.stair_down, max_stairs_down)
         self.treasures = self._put_tile(TileTypes.treasure, max_treasures)
+        self.player = self._put_tile(TileTypes.player, 1, temporary=True)[0]
 
     def populate(self):
-        self.monsters = self._put_tile(TileTypes.monster, random.randint(5,10))
+        self.monsters = self._put_tile(TileTypes.monster, random.randint(15,30), temporary=True)
 
     def animate(self):
-        pass
+        for monster in self.monsters:
+            moved = False
+            while moved == False:
+                direction = monster.move()
+                coord_changer = -1 if direction in ['up', 'left'] else 1
+                if direction in ['up', 'down']:
+                    x = monster.x
+                    y = monster.y + coord_changer
+                    if self.level[x][y][-1] == TileTypes.walkable:
+                        #self.level[monster.x][monster.y].pop()
+                        monster.x = x
+                        monster.y = y
+                        #self.level[monster.x][monster.y].append(monster.tile_id())
+                        moved = True
+                if direction in ['left', 'right']:
+                    x = monster.x + coord_changer
+                    y = monster.y
+                    if self.level[x][y][-1] == TileTypes.walkable:
+                        #self.level[monster.x][monster.y].pop()
+                        monster.x = x
+                        monster.y = y
+                        #self.level[monster.x][monster.y].append(monster.tile_id())
+                        moved = True
+
+    def move_player(self, direction):
+        coord_changer = -1 if direction in ['up', 'left'] else 1
+        if direction in ['up', 'down']:
+            x = self.player.x
+            y = self.player.y + coord_changer
+            print self.player.x, self.player.y, x,y,self.level[x][y][-1]
+            if self.level[x][y][-1] != TileTypes.wall:
+                #self.level[self.player.x][self.player.y].pop()
+                self.player.x = x
+                self.player.y = y
+                #self.level[self.player.x][self.player.y].append(self.player.tile_id())
+                print self.player.x, self.player.y
+
+        if direction in ['left', 'right']:
+            x = self.player.x + coord_changer
+            y = self.player.y
+            print self.player.x, self.player.y, x,y,self.level[x][y][-1]
+            if self.level[x][y][-1] != TileTypes.wall:
+                #self.level[self.player.x][self.player.y].pop()
+                self.player.x = x
+                self.player.y = y
+                #self.level[self.player.x][self.player.y].append(self.player.tile_id())
 
     def _put_rooms(self):
         rooms = []
@@ -141,7 +188,7 @@ class Level(object):
                     break
 
 
-    def _put_tile(self, tileType, amount):
+    def _put_tile(self, tileType, amount, temporary=False):
         tiles = []
         max_width = len(self.level)
         max_height = len(self.level[0])
@@ -153,7 +200,8 @@ class Level(object):
             y = random.randint(0, self.MAX_LEVEL_TILES_Y - 1)
 
             if (TileTypes.walkable in self.level[x][y]):
-                self.level[x][y].append(tileType)
+                if not temporary:
+                    self.level[x][y].append(tileType)
 
                 tiles.append(TileTypes.get_tile_class(tileType)(x, y))
                 put += 1
@@ -167,14 +215,58 @@ class RogueHell(object):
         self.MAX_LEVEL_TILES_X = int(width)
         self.MAX_LEVEL_TILES_Y = int(height)
         self.number_of_levels = number_of_levels
+        self.current_level_deep = 0
         
         self.levels = [Level(i, self.number_of_levels, width, height) for i in xrange(1, number_of_levels)]
-        self.current_level = self.levels[0]
+
+        self.change_level(self.current_level_deep)
+
+    def change_level(self, deep):
+        self.current_level = self.levels[deep]
         self.current_level.populate()
 
     def new_round(self):
         self.current_level.animate()
 
+    def get_map(self):
         return self.current_level.level
 
+    def get_life_on_level(self):            
+        return {
+            'monsters': [(TileTypes.monster, m.x, m.y) for m in self.current_level.monsters],
+            'player': (TileTypes.player, self.current_level.player.x, self.current_level.player.y)
+        }
 
+    def move_player(self, direction):
+        self.current_level.move_player(direction)
+
+
+    def fighting(self):
+        for m in self.current_level.monsters:
+            if m.x == self.current_level.player.x and m.y == self.current_level.player.y:
+                return True
+
+        return False
+
+    def fight(self):
+        if random.randint(0, 100) > 50:
+            self.current_level.monsters = [m for m in self.current_level.monsters if m.x != self.current_level.player.x or m.y != self.current_level.player.y]
+        
+        return "fight log %d" % random.randint(0, 100)
+
+    def interact(self, key):
+        if key == 'omni':
+            print "Interacting with", self.current_level.level[self.current_level.player.x][self.current_level.player.y]
+            if TileTypes.stair_up in self.current_level.level[self.current_level.player.x][self.current_level.player.y]:
+                if self.current_level_deep > 0:
+                    self.current_level_deep -= 1
+                    self.change_level(self.current_level_deep)
+                    return {'changed_level':True}
+
+            if TileTypes.stair_down in self.current_level.level[self.current_level.player.x][self.current_level.player.y]:
+                if self.current_level_deep < self.number_of_levels:
+                    self.current_level_deep += 1
+                    self.change_level(self.current_level_deep)
+                    return {'changed_level':True}
+
+        return {}

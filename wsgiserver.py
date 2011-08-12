@@ -6,6 +6,9 @@ import os, random, json, time
 from flask import Flask, request, render_template, session, sessions, g, Response
 from werkzeug.serving import run_with_reloader
 from werkzeug.contrib.sessions import FilesystemSessionStore
+import redis
+
+server = redis.Redis(host='localhost', port=6379, db=0)
 
 from game import RogueHell
 
@@ -40,6 +43,57 @@ def after_request(response):
         app.save_session(session, response)
     return response
 
+@app.route('/move/<direction>')
+def move_player(direction):
+    game = server.set('%s_move_player' % session.get('sid'), direction)
+    return Response(['ok'])
+
+@app.route('/interact/<key>')
+@app.route('/interact/')
+def interact(key='omni'):
+    game = server.set('%s_interaction' % session.get('sid'), key)
+    return Response(['ok'])
+
+def handle_game(game, output, sid):
+    round_count = 0
+
+    rpc = "<script type='text/javascript'>parent.setCurrentLevel(%s);</script>" % json.dumps(game.get_map())
+    output.put(rpc)
+
+    while True:
+        print "Round:", round_count
+        if round_count % 5 == 0:
+            game.new_round()
+    
+        direction = server.get('%s_move_player' % sid)
+        if direction != 'None':
+            print "Direction:", direction
+            game.move_player(direction)
+            server.set('%s_move_player' % sid, None)
+
+        interaction = server.get('%s_interaction' % sid)
+        if interaction != 'None':
+            result = game.interact(interaction)
+            print "interaction:", interaction, result
+            if result.get('changed_level', False):
+                rpc = "<script type='text/javascript'>parent.setCurrentLevel(%s);</script>" % json.dumps(game.get_map())
+                output.put(rpc)
+
+            server.set('%s_interaction' % sid, None)
+
+        while game.fighting() == True:
+            print "Fighting!"
+            fight_log = game.fight()
+            rpc = "<script type='text/javascript'>parent.text('%s');</script>" % fight_log 
+            output.put(rpc)    
+            sleep(1)
+
+        rpc = "<script type='text/javascript'>parent.draw(%s);</script>" % json.dumps(game.get_life_on_level())
+        output.put(rpc)
+
+        round_count += 1
+        sleep(0.5)
+
 @app.route('/play')
 def play():
     game = g.session.get('game')
@@ -49,20 +103,11 @@ def play():
             width=60,
             height=60
         )
-        g.session['game'] = game    
+        g.session['game'] = game
 
-    def handle_game(q):
-        while True:
-            #rpc = 'drawLevel(%s);' % (game.levels[0])
-            level = game.new_round()
-            #print level
-            rpc = "<script type='text/javascript'>parent.drawLevel(%s);</script>" % json.dumps(level)
-            q.put(rpc)
-            sleep(3)
-
-    q = queue.Queue()
-    greenlet = Greenlet.spawn(handle_game, q)
-    return Response(q, direct_passthrough=True)
+    output = queue.Queue()
+    greenlet = Greenlet.spawn(handle_game, game, output, session.get('sid'))
+    return Response(output, direct_passthrough=True)
 
 @app.route('/')
 def homepage():
