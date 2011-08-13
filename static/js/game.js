@@ -50,9 +50,9 @@ function initGame (viewportId) {
 	var playIframe = $('<iframe src="/play" style="display:none;"></script>');	
 	$('body').append(playIframe);
 
-	$(document).keypress(function(e) {
-		console.log(e.keyCode);
-	    switch (e.keyCode) {
+	$(window).keydown(function(e) {
+		console.log(e.which);
+	    switch (e.which) {
 	    	case 13:
 				$.ajax('/interact/');
 				break;
@@ -70,7 +70,7 @@ function initGame (viewportId) {
 					39: 'right',
 					40: 'down',
 				};
-				$.ajax('/move/' + directions[e.keyCode]);
+				$.ajax('/move/' + directions[e.which]);
 				break;
 	    }
 

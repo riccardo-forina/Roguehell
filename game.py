@@ -30,8 +30,6 @@ class Level(object):
         self.MAX_LEVEL_TILES_X = int(width)
         self.MAX_LEVEL_TILES_Y = int(height)
 
-        max_stairs_up = 1 if (story == 1) else random.randint(1, 2)
-        max_stairs_down = 0 if (story == max_story) else random.randint(1, 2)
         max_treasures = random.randint(0, 5)
 
         self.level = [None for x in xrange(0, self.MAX_LEVEL_TILES_X)]
@@ -40,10 +38,13 @@ class Level(object):
         
         self.rooms = self._put_rooms()
         
-        self.stairs_up = self._put_tile(TileTypes.stair_up, max_stairs_up)
-        self.stairs_down = self._put_tile(TileTypes.stair_down, max_stairs_down)
+        self.stairs_up = self._put_tile(TileTypes.stair_up, 1)[0]
+        self.stairs_down = self._put_tile(TileTypes.stair_down, 1)[0]
         self.treasures = self._put_tile(TileTypes.treasure, max_treasures)
-        self.player = self._put_tile(TileTypes.player, 1, temporary=True)[0]
+        #self.player = self._put_tile(TileTypes.player, 1, temporary=True)[0]
+
+        self.player = TileTypes.get_tile_class(TileTypes.player)(self.stairs_up.x, self.stairs_up.y)
+        #self.level[self.stairs_up.x][self.stairs_up.y].append(TileTypes.player)
 
     def populate(self):
         self.monsters = self._put_tile(TileTypes.monster, random.randint(15,30), temporary=True)
