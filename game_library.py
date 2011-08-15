@@ -2,6 +2,7 @@ import random
 
 class Tile(object):
     def __init__(self, x, y):
+        self.id = "%s_%s" % (x, y)
         self.x = x
         self.y = y
 

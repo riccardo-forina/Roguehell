@@ -4,15 +4,14 @@
 	<title>Roguehell</title>
 	<script type="text/javascript" src="{{ url_for('static', filename='js/jquery-1.6.2.min.js') }}"></script>
 	<script type="text/javascript" src="{{ url_for('static', filename='js/jquery.mousewheel.min.js') }}"></script>
-	<script type="text/javascript" src="{{ url_for('static', filename='js/game.js') }}"></script>
 	<style type="text/css">
 		@font-face {
 			font-family: 'Coustard';
 			font-style: normal;
 			font-weight: 400;
 			src: local('Coustard'), url('/static/custard.woff') format('woff');
-			}
-		{
+		}
+		* {
 			margin: 0;
 			padding: 0;
 		}
@@ -25,12 +24,12 @@
 			left: 0;
 			right: 0;
 			bottom: 0;
-		}
-		#gamearea .viewport {
-			/*position: absolute;
-			top: 0;
-			left: 0;*/
 			background: #000;
+		}
+		#gamearea canvas {
+			position: absolute;
+			top: 0;
+			left: 0;
 		}
 		#tiles {
 			display: none;
@@ -39,15 +38,16 @@
 </head>
 <body>
 	<div id="gamearea">
-		<canvas class="viewport"></canvas>
+		
 	</div>
+
 	<div id="tiles">
-		<img src="{{ url_for('static', filename='img/RPG_Maker_VX_RTP_Tileset_by_telles0808.png') }}" class="level" />
-		<img src="{{ url_for('static', filename='img/FinalFantasy1and2DawnofSoulsEnemySpriteGallery1_02.png') }}" class="enemies" />
+		<img src="{{ url_for('static', filename='img/RPG_Maker_VX_RTP_Tileset_by_telles0808.png') }}" class="map" />
+		<img src="{{ url_for('static', filename='img/FinalFantasy1and2DawnofSoulsEnemySpriteGallery1_02.png') }}" class="creatures" />
 	</div>
-	<div style="font-family: Coustard;"> .</div>
-	<script type="text/javascript">
-		initGame('gamearea');
-	</script>
+	<div style="font-family: Coustard;"> </div>
+	
+	<script type="text/javascript" src="{{ url_for('static', filename='js/game.js') }}"></script>
+
 </body>
 </html>

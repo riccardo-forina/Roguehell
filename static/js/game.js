@@ -1,3 +1,359 @@
+var TILE_SIZE = 64,
+	ZOOM = 1;
+
+function GfxEngine (gameArea, clippingWidth, clippingHeight) {
+	var _background = document.createElement('canvas'),
+		_backgroundContext = _background.getContext('2d'),
+		_canvas = document.createElement('canvas'),
+		_context = _canvas.getContext('2d'),
+		_focus = undefined,
+		_drawables = [],
+
+		_clipX = 0,
+		_clipY = 0;
+
+	_canvas.width = clippingWidth;
+	_canvas.height = clippingHeight;
+
+	gameArea.append(_background);
+	gameArea.append(_canvas);
+
+	var _backgroundDom = $(_background);
+	var _canvasDom = $(_canvas);
+
+	var _startDrawing = function() {
+		
+		function _draw(timestamp) {
+			_context.clearRect(0, 0, clippingWidth, clippingHeight);
+
+			//calculate difference since last repaint
+			var drawStart = (timestamp || Date.now()),
+			diff = drawStart - startTime;
+
+			var startX = _focus.getX() - clippingWidth / 2,
+				startY = _focus.getY() - clippingHeight / 2;
+
+			_backgroundDom.css('left', -1 * startX);
+			_backgroundDom.css('top', -1 * startY);
+
+			for (var i = 0; i < _drawables.length; i++) {
+				var d = _drawables[i];
+				d.update();
+				var x = d.getX() - startX,
+					y = d.getY() - startY;
+				if(x >= 0 && x < clippingWidth && y >= 0 && y < clippingWidth) {
+					_context.drawImage(
+						d.getImage(),
+						x, y
+					);
+				}
+			};
+
+			_focus.update();
+			_context.drawImage(
+				_focus.getImage(),
+				_focus.getX() - startX,
+				_focus.getY() - startY
+			);
+			/* console.log(
+				"Focus",
+				_focus.getX(),
+				_focus.getY(),
+				_focus.getX() - startX,
+				_focus.getY() - startY
+			); */
+
+			//reset startTime to this repaint
+			startTime = drawStart;
+
+			//draw again
+			requestAnimationFrame(_draw);
+		}
+
+		var requestAnimationFrame = window.mozRequestAnimationFrame || window.webkitRequestAnimationFrame,
+			startTime = window.mozAnimationStartTime || Date.now();
+		requestAnimationFrame(_draw);
+	};
+
+	return {
+		setBackground: function(drawable) {
+			var image = drawable.getImage();
+			_background.width = image.width;
+			_background.height = image.height;
+			_backgroundContext.drawImage(image, 0, 0);
+		},
+		setFocus: function(drawable) {
+			_focus = drawable;
+		},
+		addDrawable: function(drawable) {
+			_drawables[_drawables.length] = drawable;
+		},
+		start: function() {
+			_context.scale(ZOOM, ZOOM);
+			_startDrawing();
+		}
+	}
+};
+
+function Drawable(image, x, y) {
+	var _originalImage = image,
+		_image = document.createElement('canvas'),
+		_context = _image.getContext('2d'),
+		_x = x,
+		_y = y,
+		_animationX = _x,
+		_animationY = _y;
+
+	_image.width = image.width;
+	_image.height = image.height;
+	_context.drawImage(image, 0, 0);
+
+	return {
+		update: function(diff) {
+			if (_x > _animationX){ 
+				_animationX += 1;
+			}
+			if (_x < _animationX) {
+				_animationX -= 1;
+			}	
+			if (_y > _animationY) {
+				_animationY += 1;
+			}
+			if (_y < _animationY) {
+				_animationY -= 1;
+			}
+		},
+		getImage: function() {
+			return _image;
+		},
+		getX: function() { return _animationX; },
+		getY: function() { return _animationY; },
+		goTo: function(x, y) {
+			if ( x != _x) {
+				_context.save();
+
+				_context.clearRect(0, 0, _image.width, _image.height);
+				if (x > _x) {
+					_context.scale(1, 1);
+				} if (x < _x) {
+					_context.translate(_image.width, 0);
+					_context.scale(-1, 1);
+				}
+
+				_context.drawImage(_originalImage, 0, 0);
+
+				_context.restore();
+			}
+
+			_x = x;
+			_y = y;
+		}
+	}
+}
+
+function Map(map) {
+	// build a Drawable from a matrix of tile types
+	var canvas = document.createElement('canvas'),
+		context;
+	
+	canvas.width = map.length * TILE_SIZE;
+	canvas.height = map[0].length * TILE_SIZE;
+	context = canvas.getContext('2d');
+	
+	for (var ix = 0; ix < map.length; ix++) {
+		var x = ix * TILE_SIZE;
+
+		for (var iy = 0; iy < map[0].length; iy++) {
+			var y = iy * TILE_SIZE;
+
+			var tileType = map[ix][iy];
+			var tile = Game.mapTiles[tileType];
+
+			if (tileType == 'Wall') {
+				var upTileType = map[ix][iy - 1];
+				var downTileType = map[ix][iy + 1];
+				if (downTileType != 'Wall') {
+					if (downTileType != undefined) {
+						tile = Game.mapTiles[tileType + "_front"];
+						if (upTileType == undefined) {
+							context.drawImage(Game.mapTiles[tileType].getImage(), x, y - TILE_SIZE);				
+						}
+					}
+				} else if (downTileType == undefined) {
+					context.drawImage(Game.mapTiles[tileType + "_front"].getImage(), x, y + TILE_SIZE);
+				}
+			}
+
+			if (tile != undefined)
+				context.drawImage(tile.getImage(), x, y);
+
+		};
+	};
+
+	return new Drawable(canvas, 0, 0);
+};
+
+function Tile(image, style) {
+	var _canvas = document.createElement('canvas'),
+		_context;
+	_canvas.width = image.width * TILE_SIZE / image.width;
+	_canvas.height = image.height * TILE_SIZE / image.height;
+	_context = _canvas.getContext('2d');
+
+	style = style || 'fill';
+
+	switch(style) {
+		case 'repeat':
+			_context.fillStyle = _context.createPattern(image, "repeat");
+			_context.fillRect(0, 0, _canvas.width, _canvas.height);
+			break;
+		case 'fill':
+			_context.scale(TILE_SIZE / image.width, TILE_SIZE / image.height)
+			_context.drawImage(image, 0, 0);
+			break;
+	}
+
+	return {
+		getImage: function() {
+			return _canvas;
+		}
+	}
+};
+
+function TileSet(image, tileSize) {
+	// let's work directly with the pixels, not with parts of the image
+
+	// create a temporary canvas to load the image. There is no need to append it
+	// directly to the DOM to access to the data we need.
+	var _canvas = document.createElement('canvas');
+	_canvas.width = image.width;
+	_canvas.height= image.height;
+	var _context = _canvas.getContext('2d')
+	_context.drawImage(image, 0, 0);
+
+	var _makeImage = function(x, y, width, height) {
+		var canvas = document.createElement('canvas'),
+			context = canvas.getContext('2d');
+		canvas.width = width;
+		canvas.height = height;
+		context.putImageData(_context.getImageData(x, y, width, height), 0, 0);
+		return canvas;
+	};
+
+	return {
+		makeTile: function(id, x, y, width, height, style) {
+			this[id] = Tile(_makeImage(x, y, width, height), style);
+		}
+	}
+};
+
+
+var Game = function() {
+	var _gameArea = $('#gamearea');
+	var _gfxEngine = GfxEngine(_gameArea, _gameArea.width(), _gameArea.height());
+
+	var _creatureTiles = TileSet($('#tiles .creatures')[0], TILE_SIZE);
+	_creatureTiles.makeTile('troll', 502, 176, 44, 48);
+	_creatureTiles.makeTile('player', 802, 134, 32, 32);
+
+	var _mapTiles = TileSet($('#tiles .map')[0], TILE_SIZE);
+	_mapTiles.makeTile('StairUp', 960, 1088, 32, 32);
+	_mapTiles.makeTile('StairDown', 960, 1120, 32, 32);
+	_mapTiles.makeTile('Treasure', 992, 1600, 32, 32);
+	_mapTiles.makeTile('Wall', 832, 32 + 160, 64, 64);
+	_mapTiles.makeTile('Wall_front', 832, 96 + 160, 64, 64);
+	_mapTiles.makeTile('Walkable', 480, 128, 32, 32, 'repeat');
+	_mapTiles.makeTile('WalkableFeature1', 480, 160, 32, 32);
+	_mapTiles.makeTile('WalkableFeature2', 288, 1728, 32, 64);
+	_mapTiles.makeTile('WalkableFeature3', 288, 1792, 32, 32);
+	_mapTiles.makeTile('WalkableFeature4', 768, 1856, 32, 64);
+	_mapTiles.makeTile('WalkableFeature5', 800, 1856, 32, 64);
+	_mapTiles.makeTile('WalkableFeature6', 832, 1856, 32, 64);
+	_mapTiles.makeTile('WalkableFeature7', 864, 1856, 32, 64);
+
+	var _map = undefined,
+		_player = undefined,
+		_monsters = undefined;
+
+	$('body').append('<iframe src="/play" style="display:none;"></script>');
+
+	$(window).keydown(function(e) {
+		console.log(e.which);
+	    switch (e.which) {
+	    	case 13:
+				$.ajax('/interact/');
+				break;
+	    	case 27:
+				e.stopPropagation();
+				e.preventDefault();
+				return false;
+			case 37:
+			case 38:
+			case 39:
+			case 40:
+				var directions = {
+					37: 'left',
+					38: 'up',
+					39: 'right',
+					40: 'down',
+				};
+				$.ajax('/move/' + directions[e.which]);
+				break;
+	    }
+
+	});
+
+	return {
+		mapTiles: _mapTiles,
+		creatureTiles: _creatureTiles,
+		setMap: function(map) {
+			_gfxEngine.setBackground(Map(map));
+		},
+		setLifeOnLevel: function(lifeOnLevel) {
+			// console.log(lifeOnLevel.player);
+			if (_player == undefined) {
+				_player = new Drawable(
+					_creatureTiles.player.getImage(), 
+					lifeOnLevel.player[1] * TILE_SIZE, 
+					lifeOnLevel.player[2] * TILE_SIZE
+				);
+				_gfxEngine.setFocus(_player);
+			} else {
+				_player.goTo(lifeOnLevel.player[1] * TILE_SIZE, lifeOnLevel.player[2] * TILE_SIZE);
+			}
+
+			if (_monsters == undefined) {
+				_monsters = {};
+				for (var i = 0; i < lifeOnLevel.monsters.length; i++) {
+					var m = lifeOnLevel.monsters[i];
+					_monsters[m[1]] = new Drawable(
+						_creatureTiles.troll.getImage(),
+						m[2] * TILE_SIZE,
+						m[3] * TILE_SIZE
+					);
+					_gfxEngine.addDrawable(_monsters[m[1]]);
+				};
+			} else {
+				for (var i = 0; i < lifeOnLevel.monsters.length; i++) {
+					var m = lifeOnLevel.monsters[i];
+					_monsters[m[1]].goTo(
+						m[2] * TILE_SIZE,
+						m[3] * TILE_SIZE
+					);
+				}
+			}
+
+			if (_monsters != undefined && _player != undefined) {
+				_gfxEngine.start();
+			}
+		},
+		text: function(text) {
+			console.log(text);
+		}
+	}
+}();
+
+/*
 var TILE_SIZE =32,
 	MINIMAP_TILE_SIZE = 4,
    
@@ -114,10 +470,6 @@ function initGame (viewportId) {
 	tileTypesGfx[tileTypes.player] = [enemyTiles, 802, 134, 32, 32, _drawTileCentered];
 	
 }
-
-/*******************************************************
-					INTERNAL STUFF
-*******************************************************/
 
 function setCurrentLevel(level) {
 	currentLevel = level;
@@ -345,3 +697,4 @@ function rand(min, max) {
 	var r = min + Math.floor(Math.random()*(max+1));
 	return r;
 }
+*/

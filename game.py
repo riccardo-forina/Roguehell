@@ -34,13 +34,13 @@ class Level(object):
 
         self.level = [None for x in xrange(0, self.MAX_LEVEL_TILES_X)]
         for i in range(len(self.level)):
-            self.level[i] = [[] for y in xrange(0, self.MAX_LEVEL_TILES_Y)]
+            self.level[i] = [None for y in xrange(0, self.MAX_LEVEL_TILES_Y)]
         
         self.rooms = self._put_rooms()
         
         self.stairs_up = self._put_tile(TileTypes.stair_up, 1)[0]
         self.stairs_down = self._put_tile(TileTypes.stair_down, 1)[0]
-        self.treasures = self._put_tile(TileTypes.treasure, max_treasures)
+        #self.treasures = self._put_tile(TileTypes.treasure, max_treasures)
         #self.player = self._put_tile(TileTypes.player, 1, temporary=True)[0]
 
         self.player = TileTypes.get_tile_class(TileTypes.player)(self.stairs_up.x, self.stairs_up.y)
@@ -58,7 +58,7 @@ class Level(object):
                 if direction in ['up', 'down']:
                     x = monster.x
                     y = monster.y + coord_changer
-                    if self.level[x][y][-1] == TileTypes.walkable:
+                    if self.level[x][y] == TileTypes.walkable:
                         #self.level[monster.x][monster.y].pop()
                         monster.x = x
                         monster.y = y
@@ -67,7 +67,7 @@ class Level(object):
                 if direction in ['left', 'right']:
                     x = monster.x + coord_changer
                     y = monster.y
-                    if self.level[x][y][-1] == TileTypes.walkable:
+                    if self.level[x][y] == TileTypes.walkable:
                         #self.level[monster.x][monster.y].pop()
                         monster.x = x
                         monster.y = y
@@ -79,8 +79,8 @@ class Level(object):
         if direction in ['up', 'down']:
             x = self.player.x
             y = self.player.y + coord_changer
-            print self.player.x, self.player.y, x,y,self.level[x][y][-1]
-            if self.level[x][y][-1] != TileTypes.wall:
+            print self.player.x, self.player.y, x,y,self.level[x][y]
+            if self.level[x][y] != TileTypes.wall:
                 #self.level[self.player.x][self.player.y].pop()
                 self.player.x = x
                 self.player.y = y
@@ -90,8 +90,8 @@ class Level(object):
         if direction in ['left', 'right']:
             x = self.player.x + coord_changer
             y = self.player.y
-            print self.player.x, self.player.y, x,y,self.level[x][y][-1]
-            if self.level[x][y][-1] != TileTypes.wall:
+            print self.player.x, self.player.y, x,y,self.level[x][y]
+            if self.level[x][y] != TileTypes.wall:
                 #self.level[self.player.x][self.player.y].pop()
                 self.player.x = x
                 self.player.y = y
@@ -113,7 +113,7 @@ class Level(object):
             def fits():
                 for x in xrange(startX , endX):
                     for y in xrange(startY, endY):
-                        if (len(self.level[x][y]) != 0):
+                        if (self.level[x][y] != None):
                             return False
                 return True
 
@@ -121,9 +121,9 @@ class Level(object):
                 for x in xrange(startX , endX):
                     for y in xrange(startY, endY):
                         if (x == startX or y == startY or x == endX-1 or y == endY-1):
-                            self.level[x][y] = [TileTypes.wall]
+                            self.level[x][y] = TileTypes.wall
                         else:
-                            self.level[x][y] = [TileTypes.walkable]
+                            self.level[x][y] = TileTypes.walkable
                 rooms.append((startX,startY,endX,endY))
             else:
                 checks += 1
@@ -136,11 +136,11 @@ class Level(object):
             coord_changer = -1 if direction in ['up', 'left'] else 1
             if direction in ['up', 'down']:
                 for testY in xrange(y, 0, coord_changer):
-                    if TileTypes.wall in self.level[x][testY] and TileTypes.walkable in self.level[x][testY + coord_changer]:
+                    if TileTypes.wall == self.level[x][testY] and TileTypes.walkable == self.level[x][testY + coord_changer]:
                         return True
             if direction in ['left', 'right']:
                 for testX in xrange(x, 0, coord_changer):
-                    if TileTypes.wall in self.level[testX][y] and TileTypes.walkable in self.level[testX + coord_changer][y]:
+                    if TileTypes.wall == self.level[testX][y] and TileTypes.walkable == self.level[testX + coord_changer][y]:
                         return True
 
         for room in rooms:
@@ -167,24 +167,24 @@ class Level(object):
             self.level[x][y] = [TileTypes.walkable]
             y += coord_changer
             for y in xrange(y, 0, coord_changer):
-                if len(self.level[x][y]) == 0 or TileTypes.wall in self.level[x][y]:
-                    self.level[x][y] = [TileTypes.walkable]
-                    if x > 0 and len(self.level[x - 1][y]) == 0:
-                        self.level[x - 1][y] = [TileTypes.wall]
-                    if x < self.MAX_LEVEL_TILES_X -1 and len(self.level[x + 1][y]) == 0:
-                        self.level[x + 1][y] = [TileTypes.wall]
+                if self.level[x][y] == None or TileTypes.wall == self.level[x][y]:
+                    self.level[x][y] = TileTypes.walkable
+                    if x > 0 and self.level[x - 1][y] == None:
+                        self.level[x - 1][y] = TileTypes.wall
+                    if x < self.MAX_LEVEL_TILES_X -1 and self.level[x + 1][y] == None:
+                        self.level[x + 1][y] = TileTypes.wall
                 else:
                     break
         if direction in ['left', 'right']:
             self.level[x][y] = [TileTypes.walkable]
             x += coord_changer
             for x in xrange(x, 0, coord_changer):
-                if len(self.level[x][y]) == 0 or TileTypes.wall in self.level[x][y]:
-                    self.level[x][y] = [TileTypes.walkable]
-                    if y > 0 and len(self.level[x][y - 1]) == 0:
-                        self.level[x][y - 1] = [TileTypes.wall]
-                    if y < self.MAX_LEVEL_TILES_Y -1 and len(self.level[x][y + 1]) == 0:
-                        self.level[x][y + 1] = [TileTypes.wall]
+                if self.level[x][y] == None or TileTypes.wall == self.level[x][y]:
+                    self.level[x][y] = TileTypes.walkable
+                    if y > 0 and self.level[x][y - 1] == None:
+                        self.level[x][y - 1] = TileTypes.wall
+                    if y < self.MAX_LEVEL_TILES_Y -1 and self.level[x][y + 1] == None:
+                        self.level[x][y + 1] = TileTypes.wall
                 else:
                     break
 
@@ -199,10 +199,11 @@ class Level(object):
         while(put < amount):
             x = random.randint(0, self.MAX_LEVEL_TILES_X - 1)
             y = random.randint(0, self.MAX_LEVEL_TILES_Y - 1)
+            print "Trying to put", tileType, "in", x, y, self.level[x][y]
 
-            if (TileTypes.walkable in self.level[x][y]):
+            if (TileTypes.walkable == self.level[x][y]):
                 if not temporary:
-                    self.level[x][y].append(tileType)
+                    self.level[x][y] = tileType
 
                 tiles.append(TileTypes.get_tile_class(tileType)(x, y))
                 put += 1
@@ -228,13 +229,14 @@ class RogueHell(object):
 
     def new_round(self):
         self.current_level.animate()
+        #self.move_player(['up', 'left', 'down', 'right'][random.randint(0,3)])
 
     def get_map(self):
         return self.current_level.level
 
     def get_life_on_level(self):            
         return {
-            'monsters': [(TileTypes.monster, m.x, m.y) for m in self.current_level.monsters],
+            'monsters': [(TileTypes.monster, m.id, m.x, m.y) for m in self.current_level.monsters],
             'player': (TileTypes.player, self.current_level.player.x, self.current_level.player.y)
         }
 

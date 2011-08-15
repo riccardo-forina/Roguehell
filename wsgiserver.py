@@ -57,26 +57,30 @@ def interact(key='omni'):
 def handle_game(game, output, sid):
     round_count = 0
 
-    rpc = "<script type='text/javascript'>parent.setCurrentLevel(%s);</script>" % json.dumps(game.get_map())
+    rpc = "<script type='text/javascript'>parent.Game.setMap(%s);</script>" % json.dumps(game.get_map())
     output.put(rpc)
 
     while True:
         print "Round:", round_count
-        if round_count % 5 == 0:
+        if round_count % 20 == 0:
             game.new_round()
+            rpc = "<script type='text/javascript'>parent.Game.setLifeOnLevel(%s);</script>" % json.dumps(game.get_life_on_level())
+            output.put(rpc)
     
         direction = server.get('%s_move_player' % sid)
         if direction != 'None':
             print "Direction:", direction
             game.move_player(direction)
             server.set('%s_move_player' % sid, None)
+            rpc = "<script type='text/javascript'>parent.Game.setLifeOnLevel(%s);</script>" % json.dumps(game.get_life_on_level())
+            output.put(rpc)
 
         interaction = server.get('%s_interaction' % sid)
         if interaction != 'None':
             result = game.interact(interaction)
             print "interaction:", interaction, result
             if result.get('changed_level', False):
-                rpc = "<script type='text/javascript'>parent.setCurrentLevel(%s);</script>" % json.dumps(game.get_map())
+                rpc = "<script type='text/javascript'>parent.Game.setMap(%s);</script>" % json.dumps(game.get_map())
                 output.put(rpc)
 
             server.set('%s_interaction' % sid, None)
@@ -84,15 +88,13 @@ def handle_game(game, output, sid):
         while game.fighting() == True:
             print "Fighting!"
             fight_log = game.fight()
-            rpc = "<script type='text/javascript'>parent.text('%s');</script>" % fight_log 
+            rpc = "<script type='text/javascript'>parent.Game.text('%s');</script>" % fight_log 
             output.put(rpc)    
             sleep(1)
 
-        rpc = "<script type='text/javascript'>parent.draw(%s);</script>" % json.dumps(game.get_life_on_level())
-        output.put(rpc)
 
         round_count += 1
-        sleep(0.5)
+        sleep(0.1)
 
 @app.route('/play')
 def play():
